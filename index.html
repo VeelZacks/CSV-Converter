@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./styles.css">
+    <title>Конвертер изображений</title>
+</head>
+<body>
+    <button id="settingsBtn" class="settings-btn" title="Настройки">⚙️</button>
+    <div class="main_section">
+        <div class="text">
+            <h2>Конвертер изображений</h2>
+            <span>Сконвертируйте файлы изображений любого формата</span>
+        </div> 
+        <div class="block_converter">
+            <label class="drop-container" id="dropcontainer">
+                <span class="file-label">Выбрать файлы</span>
+            </label>
+            <div class="file-list" id="fileList">
+                <div class="file-list-header">
+                    <span>Файл</span>
+                    <span>Формат</span>
+                    <span>Действие</span>
+                </div>
+                <div class="file-list-items" id="fileListItems"></div>
+            </div>
+            <button class="convert-btn" id="convertBtn" disabled>Сконвертировать</button>
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-text" id="progressText"></div>
+            <div class="success-message" id="successMessage">
+                ✅ Все файлы успешно сконвертированы!
+            </div>
+        </div>
+    </div>
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Настройки приложения</h2>
+            <div class="setting-item">
+                <label for="themeSelect">Тема интерфейса:</label>
+                <select id="themeSelect" class="settings-select">
+                    <option value="light">Светлая</option>
+                    <option value="dark">Темная</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label>Папка для сохранения файлов:</label>
+                <div class="directory-info">
+                    <span id="currentDirectory" class="directory-path">Загрузки</span>
+                </div>
+                <button id="selectDirectoryBtn" class="select-dir-btn">Выбрать папку</button>
+                <small class="hint">Оставьте пустым для сохранения в папку «Загрузки»</small>
+            </div>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
