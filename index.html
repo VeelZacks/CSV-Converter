@@ -4,41 +4,72 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="./styles.css">
-    <title>Конвертер изображений</title>
+    <title>Преобразователь CSV</title>
 </head>
 <body>
     <button id="settingsBtn" class="settings-btn" title="Настройки">⚙️</button>
+
     <div class="main_section">
         <div class="text">
-            <h2>Конвертер изображений</h2>
-            <span>Сконвертируйте файлы изображений любого формата</span>
+            <h2>Преобразователь CSV</h2>
+            <span>Настройте правила и выберите файлы</span>
         </div> 
+
         <div class="block_converter">
-            <label class="drop-container" id="dropcontainer">
-                <span class="file-label">Выбрать файлы</span>
-            </label>
+            <div class="processing-rules">
+                <div class="rule-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="removeEmptyQuotes" checked>
+                        <span>Удалять пустые кавычки ("")</span>
+                    </label>
+                </div>
+                <div class="rule-item">
+                    <div class="input-group">
+                        <input type="text" id="findText" placeholder="Что найти..." class="settings-input">
+                        <span class="arrow">→</span>
+                        <input type="text" id="replaceText" placeholder="На что заменить..." class="settings-input">
+                    </div>
+                    <small class="hint" style="display:block; margin-top:5px; color:#888;">Оставьте пустым, если замена не нужна</small>
+                </div>
+            </div>
+
+            <div class="selection-area">
+                <div class="selection-area">
+                    <div id="pickFilesBtn" class="file-label">
+                        <span>📁 Выбрать файлы CSV</span>
+                    </div>
+                </div>
+                <input type="file" id="fileInput" accept=".csv" multiple style="display: none;">
+            </div>
+
             <div class="file-list" id="fileList">
                 <div class="file-list-header">
                     <span>Файл</span>
-                    <span>Формат</span>
+                    <span>Размер</span>
                     <span>Действие</span>
                 </div>
                 <div class="file-list-items" id="fileListItems"></div>
             </div>
+
             <button class="convert-btn" id="convertBtn" disabled>Сконвертировать</button>
+            
             <div class="progress-container" id="progressContainer">
                 <div class="progress-bar" id="progressBar"></div>
             </div>
+            
             <div class="progress-text" id="progressText"></div>
+            
             <div class="success-message" id="successMessage">
                 ✅ Все файлы успешно сконвертированы!
             </div>
         </div>
     </div>
+
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
             <h2>Настройки приложения</h2>
+            
             <div class="setting-item">
                 <label for="themeSelect">Тема интерфейса:</label>
                 <select id="themeSelect" class="settings-select">
@@ -46,13 +77,11 @@
                     <option value="dark">Темная</option>
                 </select>
             </div>
+
             <div class="setting-item">
-                <label>Папка для сохранения файлов:</label>
-                <div class="directory-info">
-                    <span id="currentDirectory" class="directory-path">Загрузки</span>
-                </div>
-                <button id="selectDirectoryBtn" class="select-dir-btn">Выбрать папку</button>
-                <small class="hint">Оставьте пустым для сохранения в папку «Загрузки»</small>
+                <label>Папка для сохранения:</label>
+                <div class="directory-info" id="currentDirectory">Загрузки (по умолчанию)</div>
+                <button id="selectDirectoryBtn" class="select-dir-btn">Изменить папку</button>
             </div>
         </div>
     </div>

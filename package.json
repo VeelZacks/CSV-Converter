@@ -1,7 +1,7 @@
 {
   "name": "converter-app",
   "version": "1.0.1",
-  "description": "Конвертер изображений на Electron",
+  "description": "Преобразователь CSV",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
