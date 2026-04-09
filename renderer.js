@@ -59,6 +59,33 @@ function setupEventListeners() {
             await window.electronAPI.saveSettings({ saveDirectory: dirPath });
         }
     };
+    // Новые правила редактирования файла 
+    elements.addRuleBtn.onclick = () => {
+        const row = document.createElement('div');
+        row.className = 'rule-item replacement-row';
+        row.innerHTML = `
+            <div class="input-group">
+                <input type="text" class="settings-input find-text" placeholder="Что найти...">
+                <span class="arrow">→</span>
+                <input type="text" class="settings-input replace-text" placeholder="На что заменить...">
+                <button class="remove-rule-btn" title="Удалить" style="margin-left: 8px; cursor:pointer;">✕</button>
+            </div>
+        `;
+        elements.rulesContainer.appendChild(row);
+    };
+
+    // Удаление строки 
+    elements.rulesContainer.onclick = (e) => {
+        if (e.target.classList.contains('remove-rule-btn')) {
+            const rows = document.querySelectorAll('.replacement-row');
+            if (rows.length > 1) {
+                e.target.closest('.replacement-row').remove();
+            } else {
+                const inputs = e.target.closest('.replacement-row').querySelectorAll('input');
+                inputs.forEach(input => input.value = '');
+            }
+        }
+    };
 
     elements.addRuleBtn.onclick = () => {
         const row = document.createElement('div');
@@ -161,6 +188,10 @@ async function startProcessing() {
     elements.convertBtn.disabled = true;
 
     let totalRowsProcessed = 0; // Счетчик для финального модального окна
+
+    elements.progressContainer.style.display = 'block';
+    elements.successMessage.style.display = 'none';
+    elements.convertBtn.disabled = true;
 
     try {
         for (let i = 0; i < selectedFiles.length; i++) {
