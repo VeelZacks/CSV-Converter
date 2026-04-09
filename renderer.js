@@ -16,10 +16,12 @@ const elements = {
     currentDirDisplay: document.getElementById('currentDirectory'),
     selectDirBtn: document.getElementById('selectDirectoryBtn'),
     closeModal: document.querySelector('.close'),
-    // Новые элементы обработки
-    removeQuotesCb: document.getElementById('removeEmptyQuotes'),
+    // removeQuotesCb: document.getElementById('removeEmptyQuotes'),
     findTextInput: document.getElementById('findText'),
-    replaceTextInput: document.getElementById('replaceText')
+    replaceTextInput: document.getElementById('replaceText'),
+    removeQuotesCb: document.getElementById('removeEmptyQuotes'),
+    rulesContainer: document.getElementById('replacementRulesContainer'),
+    addRuleBtn: document.getElementById('addRuleBtn'),
 };
 
 async function initApp() {
@@ -55,6 +57,33 @@ function setupEventListeners() {
         if (dirPath) {
             updateDirectoryDisplay(dirPath);
             await window.electronAPI.saveSettings({ saveDirectory: dirPath });
+        }
+    };
+    // Новые правила редактирования файла 
+    elements.addRuleBtn.onclick = () => {
+        const row = document.createElement('div');
+        row.className = 'rule-item replacement-row';
+        row.innerHTML = `
+            <div class="input-group">
+                <input type="text" class="settings-input find-text" placeholder="Что найти...">
+                <span class="arrow">→</span>
+                <input type="text" class="settings-input replace-text" placeholder="На что заменить...">
+                <button class="remove-rule-btn" title="Удалить" style="margin-left: 8px; cursor:pointer;">✕</button>
+            </div>
+        `;
+        elements.rulesContainer.appendChild(row);
+    };
+
+    // Удаление строки 
+    elements.rulesContainer.onclick = (e) => {
+        if (e.target.classList.contains('remove-rule-btn')) {
+            const rows = document.querySelectorAll('.replacement-row');
+            if (rows.length > 1) {
+                e.target.closest('.replacement-row').remove();
+            } else {
+                const inputs = e.target.closest('.replacement-row').querySelectorAll('input');
+                inputs.forEach(input => input.value = '');
+            }
         }
     };
 
@@ -116,15 +145,21 @@ window.removeFile = (index) => {
 async function startProcessing() {
     if (selectedFiles.length === 0) return;
 
-    elements.progressContainer.style.display = 'block';
-    elements.successMessage.style.display = 'none';
-    elements.convertBtn.disabled = true;
+    // Сбор всех правил
+    const replacementRows = document.querySelectorAll('.replacement-row');
+    const replacements = Array.from(replacementRows).map(row => ({
+        find: row.querySelector('.find-text').value,
+        replace: row.querySelector('.replace-text').value
+    })).filter(rule => rule.find !== '');
 
     const options = {
         removeEmptyQuotes: elements.removeQuotesCb.checked,
-        findText: elements.findTextInput.value,
-        replaceText: elements.replaceTextInput.value
+        replacements: replacements 
     };
+
+    elements.progressContainer.style.display = 'block';
+    elements.successMessage.style.display = 'none';
+    elements.convertBtn.disabled = true;
 
     try {
         for (let i = 0; i < selectedFiles.length; i++) {
@@ -137,9 +172,7 @@ async function startProcessing() {
                 options 
             });
 
-            if (!result.success) {
-                throw new Error(result.error);
-            }
+            if (!result.success) throw new Error(result.error);
         }
 
         elements.progressText.textContent = 'Готово!';

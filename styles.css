@@ -74,6 +74,22 @@ body {
     gap: 10px;
     max-width: 450px;
     margin: 0 auto;
+    button{
+        background: linear-gradient(45deg, #C71585, #FF1493);
+        color: white;
+        border: none;
+        border-radius: 2rem;
+        width: 250px;
+        margin: 1rem auto;
+        padding: 10px 15px;
+        transition: 0.3s ease;
+    }
+    button:hover{
+        cursor: pointer;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px #DB7093;
+    }
+
 }
 .settings-input {
     flex: 1;
