@@ -1,6 +1,6 @@
 {
-  "name": "converter-app",
-  "version": "1.0.1",
+  "name": "csv-converter-app",
+  "version": "1.0.2",
   "description": "Преобразователь CSV",
   "main": "main.js",
   "scripts": {
@@ -23,7 +23,7 @@
   },
   "build": {
     "appId": "com.veelzacks.converterapp",
-    "productName": "ConverterApp",
+    "productName": "CSV Converter",
     "directories": {
       "output": "dist"
     },
@@ -33,6 +33,8 @@
       "renderer.js",
       "index.html",
       "styles.css",
+      "splash.html",
+      "splash.css",
       "node_modules/**/*"
     ],
     "win": {

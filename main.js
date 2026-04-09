@@ -29,63 +29,64 @@ function saveSettings(settings) {
 let appSettings = loadSettings();
 
 // Запуск с анимацией
-function createWindow() {
-    splashWindow = new BrowserWindow({
-        width: 550,
-        height: 350,
-        transparent: true, 
-        frame: false,       
-        alwaysOnTop: true, 
-        resizable: false,
-        center: true,
-        backgroundColor: '#00000000', 
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
-        }
-    });
-
-    splashWindow.loadFile('splash.html');
-
-    mainWindow = new BrowserWindow({
-        width: 900,
-        height: 750,
-        show: false, 
-        webPreferences: {
-            nodeIntegration: false,
-            contextIsolation: true,
-            preload: path.join(__dirname, 'preload.js')
-        }
-    });
-
-    mainWindow.loadFile('index.html');
-    mainWindow.once('ready-to-show', () => {
-        setTimeout(() => {
-            if (splashWindow && !splashWindow.isDestroyed()) {
-                splashWindow.close();
-            }
-            mainWindow.show();
-        }, 2500);
-    });
-
-    mainWindow.on('closed', () => {
-        mainWindow = null;
-    });
-}
-
-// Запуск без анимации
 // function createWindow() {
+//     splashWindow = new BrowserWindow({
+//         width: 550,
+//         height: 350,
+//         icon: path.join(__dirname, 'photo.ico'),
+//         transparent: true, 
+//         frame: false,       
+//         alwaysOnTop: true, 
+//         resizable: false,
+//         center: true,
+//         backgroundColor: '#00000000', 
+//         webPreferences: {
+//             nodeIntegration: true,
+//             contextIsolation: false
+//         }
+//     });
+
+//     splashWindow.loadFile('splash.html');
+
 //     mainWindow = new BrowserWindow({
 //         width: 900,
 //         height: 750,
+//         show: false, 
 //         webPreferences: {
 //             nodeIntegration: false,
 //             contextIsolation: true,
 //             preload: path.join(__dirname, 'preload.js')
 //         }
 //     });
+
 //     mainWindow.loadFile('index.html');
+//     mainWindow.once('ready-to-show', () => {
+//         setTimeout(() => {
+//             if (splashWindow && !splashWindow.isDestroyed()) {
+//                 splashWindow.close();
+//             }
+//             mainWindow.show();
+//         }, 2500);
+//     });
+
+//     mainWindow.on('closed', () => {
+//         mainWindow = null;
+//     });
 // }
+
+// Запуск без анимации
+function createWindow() {
+    mainWindow = new BrowserWindow({
+        width: 900,
+        height: 750,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js')
+        }
+    });
+    mainWindow.loadFile('index.html');
+}
 
 ipcMain.handle('get-settings', () => appSettings);
 ipcMain.handle('save-settings', (event, newSettings) => {
@@ -111,51 +112,82 @@ ipcMain.handle('open-file-picker', async () => {
 
 ipcMain.handle('process-csv', async (event, { filePath, options }) => {
     try {
-        let content = await fs.readFile(filePath, 'utf8');
+        let rawContent = await fs.readFile(filePath, 'utf8');
 
-        if (options.findText && options.findText.length > 0) {
-            const escapedSearch = options.findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const searchRegExp = new RegExp(escapedSearch, 'g');
-            content = content.replace(searchRegExp, options.replaceText || '');
+        let lines = rawContent.split(/\r?\n/);
+
+        let processedLines = lines.map((line, index) => {
+            let currentLine = line;
+
+            if (!currentLine.trim()) return null;
+
+            if (options.replacements && Array.isArray(options.replacements)) {
+                options.replacements.forEach(rule => {
+                    if (rule.find) {
+                        const escapedSearch = rule.find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const searchRegExp = new RegExp(escapedSearch, 'g');
+                        currentLine = currentLine.replace(searchRegExp, rule.replace || '');
+                    }
+                });
+            }
+
+            if (options.removeEmptyQuotes) {
+                currentLine = currentLine.replace(/"\s*"/g, '');
+            }
+
+            let cells = currentLine.split(',').map(cell => cell.trim());
+
+            while (cells.length > 0 && cells[cells.length - 1] === "") {
+                cells.pop();
+            }
+
+            return cells.join(',');
+        });
+
+        if (options.deleteMode === 'top') {
+            processedLines = processedLines.filter(l => l && !l.toLowerCase().includes('top'));
+        } else if (options.deleteMode === 'bottom') {
+            processedLines = processedLines.filter(l => l && !l.toLowerCase().includes('bottom'));
         }
 
-        if (options.removeEmptyQuotes) {
-            content = content.replace(/"\s*"/g, '');
-        }
+        const finalLines = processedLines.filter(line => line !== null && line.length > 0);
 
-        content = content.split('\n').map(line => {
-            return line
-                .replace(/\s*,\s*/g, ',')  
-                .replace(/,+/g, ',')          
-                .replace(/^,|,$/g, '')         
-                .trim();
-        }).filter(line => line.length > 0).join('\n'); 
+        const rowCount = finalLines.length > 1 ? finalLines.length - 1 : 0;
+
+        const finalContent = finalLines.join('\n');
+
+        if (!finalContent) {
+            throw new Error('Файл пуст после обработки. Проверьте правила замен.');
+        }
 
         const outputDir = appSettings.saveDirectory || path.join(os.homedir(), 'Downloads');
         await fs.mkdir(outputDir, { recursive: true });
 
         const parsedPath = path.parse(filePath);
         const baseName = `${parsedPath.name}_fixed`;
-        const extension = '.csv';
+        const extension = parsedPath.ext || '.csv';
         
         let finalPath = path.join(outputDir, baseName + extension);
         let counter = 1;
-
         while (fsSync.existsSync(finalPath)) {
             finalPath = path.join(outputDir, `${baseName}(${counter})${extension}`);
             counter++;
         }
 
-        await fs.writeFile(finalPath, content, 'utf8');
+        // Запись файла
+        await fs.writeFile(finalPath, finalContent, 'utf8');
 
-        console.log(`Файл успешно сохранен: ${finalPath}`);
-        return { success: true, outputPath: finalPath };
+        return { 
+            success: true, 
+            outputPath: finalPath, 
+            rowCount: rowCount 
+        };
 
     } catch (error) {
         console.error('Ошибка при обработке CSV:', error);
         return { 
             success: false, 
-            error: error.message || 'Произошла ошибка при обработке файла' 
+            error: error.message || 'Ошибка при обработке' 
         };
     }
 });
