@@ -33,6 +33,7 @@ function createWindow() {
     splashWindow = new BrowserWindow({
         width: 550,
         height: 350,
+        icon: path.join(__dirname, 'photo.ico'),
         transparent: true, 
         frame: false,       
         alwaysOnTop: true, 
