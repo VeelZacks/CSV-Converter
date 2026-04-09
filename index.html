@@ -31,35 +31,21 @@
                             <input type="text" class="settings-input replace-text" placeholder="На что заменить...">
                         </div>
                     </div>
+                    <small class="hint" style="display:block; margin-top:5px; color:#888;">Пустая замена удалит текст</small>
                 </div>
                 <div class="rule-item">
                     <div class="input-group">
                         <button id="addRuleBtn">+ Добавить новое поле</button>
                     </div>
-                    <small class="hint" style="display:block; margin-top:5px; color:#888;">Пустая замена удалит текст</small>
+                </div>
+                <div class="rule-item">
+                    <select id="deleteRowsSelect" class="settings-input">
+                        <option value="none">Не удалять строки</option>
+                        <option value="top">Удалить строки с "Top"</option>
+                        <option value="bottom">Удалить строки с "Bottom"</option>
+                    </select>
                 </div>
             </div>
-
-            <!-- <div class="processing-rules">
-                <div class="rule-item">
-                    <label class="checkbox-container">
-                        <input type="checkbox" id="removeEmptyQuotes" checked>
-                        <span>Удалять пустые кавычки ("")</span>
-                    </label>
-                </div>
-                <div class="rule-item">
-                    <div class="input-group">
-                        <input type="text" id="findText" placeholder="Что найти..." class="settings-input">
-                        <span class="arrow">→</span>
-                        <input type="text" id="replaceText" placeholder="На что заменить..." class="settings-input">
-                    </div>
-                    <div class="input-group">
-                        <button>Добавить новое поле</button>
-                    </div>
-                    <small class="hint" style="display:block; margin-top:5px; color:#888;">Оставьте пустым, если замена не нужна</small>
-                </div>
-            </div> -->
-
             <div class="selection-area">
                 <div class="selection-area">
                     <div id="pickFilesBtn" class="file-label">

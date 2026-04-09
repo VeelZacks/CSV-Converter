@@ -110,12 +110,10 @@ ipcMain.handle('open-file-picker', async () => {
     return result.canceled ? [] : result.filePaths;
 });
 
-
-
 ipcMain.handle('process-csv', async (event, { filePath, options }) => {
     try {
         let content = await fs.readFile(filePath, 'utf8');
-        // Обработка цикла редактирования 
+
         if (options.replacements && Array.isArray(options.replacements)) {
             options.replacements.forEach(rule => {
                 if (rule.find) {
@@ -125,10 +123,20 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
                 }
             });
         }
+
         if (options.removeEmptyQuotes) {
             content = content.replace(/"\s*"/g, '');
         }
-        content = content.split('\n').map(line => {
+
+        let lines = content.split(/\r?\n/);
+
+        if (options.deleteMode === 'top') {
+            lines = lines.filter(line => !line.toLowerCase().includes('top'));
+        } else if (options.deleteMode === 'bottom') {
+            lines = lines.filter(line => !line.toLowerCase().includes('bottom'));
+        }
+
+        content = lines.map(line => {
             return line
                 .replace(/\s*,\s*/g, ',')  
                 .replace(/,+/g, ',')          
@@ -137,17 +145,69 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
         }).filter(line => line.length > 0).join('\n'); 
 
         const outputDir = appSettings.saveDirectory || path.join(os.homedir(), 'Downloads');
+        await fs.mkdir(outputDir, { recursive: true });
+
         const parsedPath = path.parse(filePath);
-        const finalPath = path.join(outputDir, `${parsedPath.name}_fixed${parsedPath.ext}`);
+        const baseName = `${parsedPath.name}_fixed`;
+        const extension = parsedPath.ext || '.csv';
         
+        let finalPath = path.join(outputDir, baseName + extension);
+        let counter = 1;
+        while (fsSync.existsSync(finalPath)) {
+            finalPath = path.join(outputDir, `${baseName}(${counter})${extension}`);
+            counter++;
+        }
+
         await fs.writeFile(finalPath, content, 'utf8');
+
+        console.log(`Файл сохранен: ${finalPath}`);
         return { success: true, outputPath: finalPath };
 
     } catch (error) {
-        console.error('Ошибка:', error);
-        return { success: false, error: error.message };
+        console.error('Ошибка при обработке CSV:', error);
+        return { 
+            success: false, 
+            error: error.message || 'Произошла ошибка при обработке файла' 
+        };
     }
 });
+
+// ipcMain.handle('process-csv', async (event, { filePath, options }) => {
+//     try {
+//         let content = await fs.readFile(filePath, 'utf8');
+//         // Обработка цикла редактирования 
+//         if (options.replacements && Array.isArray(options.replacements)) {
+//             options.replacements.forEach(rule => {
+//                 if (rule.find) {
+//                     const escapedSearch = rule.find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+//                     const searchRegExp = new RegExp(escapedSearch, 'g');
+//                     content = content.replace(searchRegExp, rule.replace || '');
+//                 }
+//             });
+//         }
+//         if (options.removeEmptyQuotes) {
+//             content = content.replace(/"\s*"/g, '');
+//         }
+//         content = content.split('\n').map(line => {
+//             return line
+//                 .replace(/\s*,\s*/g, ',')  
+//                 .replace(/,+/g, ',')          
+//                 .replace(/^,|,$/g, '')         
+//                 .trim();
+//         }).filter(line => line.length > 0).join('\n'); 
+
+//         const outputDir = appSettings.saveDirectory || path.join(os.homedir(), 'Downloads');
+//         const parsedPath = path.parse(filePath);
+//         const finalPath = path.join(outputDir, `${parsedPath.name}_fixed${parsedPath.ext}`);
+        
+//         await fs.writeFile(finalPath, content, 'utf8');
+//         return { success: true, outputPath: finalPath };
+
+//     } catch (error) {
+//         console.error('Ошибка:', error);
+//         return { success: false, error: error.message };
+//     }
+// });
 
 // ipcMain.handle('process-csv', async (event, { filePath, options }) => {
 //     try {

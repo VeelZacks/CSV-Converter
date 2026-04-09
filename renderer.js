@@ -16,12 +16,12 @@ const elements = {
     currentDirDisplay: document.getElementById('currentDirectory'),
     selectDirBtn: document.getElementById('selectDirectoryBtn'),
     closeModal: document.querySelector('.close'),
-    // removeQuotesCb: document.getElementById('removeEmptyQuotes'),
     findTextInput: document.getElementById('findText'),
     replaceTextInput: document.getElementById('replaceText'),
     removeQuotesCb: document.getElementById('removeEmptyQuotes'),
     rulesContainer: document.getElementById('replacementRulesContainer'),
     addRuleBtn: document.getElementById('addRuleBtn'),
+    deleteRowsSelect: document.getElementById('deleteRowsSelect'),
 };
 
 async function initApp() {
@@ -154,7 +154,8 @@ async function startProcessing() {
 
     const options = {
         removeEmptyQuotes: elements.removeQuotesCb.checked,
-        replacements: replacements 
+        replacements: replacements, 
+        deleteMode: elements.deleteRowsSelect.value 
     };
 
     elements.progressContainer.style.display = 'block';
