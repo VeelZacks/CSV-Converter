@@ -59,7 +59,7 @@ function setupEventListeners() {
             await window.electronAPI.saveSettings({ saveDirectory: dirPath });
         }
     };
-    // Новые правила редактирования файла 
+    // Настройки редактирования файла
     elements.addRuleBtn.onclick = () => {
         const row = document.createElement('div');
         row.className = 'rule-item replacement-row';
@@ -187,7 +187,7 @@ async function startProcessing() {
     elements.successMessage.style.display = 'none';
     elements.convertBtn.disabled = true;
 
-    let totalRowsProcessed = 0; // Счетчик для финального модального окна
+    let totalRowsProcessed = 0; // Счетчик строк
 
     elements.progressContainer.style.display = 'block';
     elements.successMessage.style.display = 'none';
