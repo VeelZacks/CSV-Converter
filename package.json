@@ -33,8 +33,6 @@
       "renderer.js",
       "index.html",
       "styles.css",
-      "splash.html",
-      "splash.css",
       "node_modules/**/*"
     ],
     "win": {
