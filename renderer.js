@@ -1,7 +1,17 @@
 let selectedFiles = [];
 let currentSettings = { theme: 'light', saveDirectory: null };
+let currentMode = 'start'; // 'start', 'edit', 'visualize'
 
 const elements = {
+    startScreen: document.getElementById('startScreen'),
+    editScreen: document.getElementById('editScreen'),
+    visualizeScreen: document.getElementById('visualizeScreen'),
+    
+    editCsvMode: document.getElementById('editCsvMode'),
+    visualizeMode: document.getElementById('visualizeMode'),
+    backBtn: document.getElementById('backBtn'),
+    backBtn2: document.getElementById('backBtn2'),
+    
     fileList: document.getElementById('fileList'),
     fileListItems: document.getElementById('fileListItems'),
     convertBtn: document.getElementById('convertBtn'),
@@ -22,13 +32,32 @@ const elements = {
     rulesContainer: document.getElementById('replacementRulesContainer'),
     addRuleBtn: document.getElementById('addRuleBtn'),
     deleteRowsSelect: document.getElementById('deleteRowsSelect'),
+    
+    // PCB Visualizer
+    pickPcbFileBtn: document.getElementById('pickPcbFileBtn'),
+    pcbFileInput: document.getElementById('pcbFileInput'),
+    pcbFileSelectedInfo: document.getElementById('pcbFileSelectedInfo'),
+    pcbFileName: document.getElementById('pcbFileName'),
+    generateSchemaBtn: document.getElementById('generateSchemaBtn'),
+    pcbProgressContainer: document.getElementById('pcbProgressContainer'),
+    pcbProgressBar: document.getElementById('pcbProgressBar'),
+    pcbProgressText: document.getElementById('pcbProgressText'),
+    pcbSuccessMessage: document.getElementById('pcbSuccessMessage'),
 };
+
+function switchScreen(mode) {
+    elements.startScreen.style.display = mode === 'start' ? 'flex' : 'none';
+    elements.editScreen.style.display = mode === 'edit' ? 'block' : 'none';
+    elements.visualizeScreen.style.display = mode === 'visualize' ? 'block' : 'none';
+    currentMode = mode;
+}
 
 async function initApp() {
     currentSettings = await window.electronAPI.getSettings();
     applyTheme(currentSettings.theme);
     updateDirectoryDisplay(currentSettings.saveDirectory);
     setupEventListeners();
+    setupScreenNavigation();
 }
 
 function applyTheme(theme) {
@@ -46,7 +75,7 @@ function setupEventListeners() {
         elements.settingsModal.style.display = 'flex';
     };
     elements.closeModal.onclick = () => elements.settingsModal.style.display = 'none';
-    
+
     elements.themeSelect.onchange = async (e) => {
         applyTheme(e.target.value);
         await window.electronAPI.saveSettings({ theme: e.target.value });
@@ -203,7 +232,7 @@ async function startProcessing() {
             elements.progressText.textContent = `Обработка (${i + 1}/${selectedFiles.length}): ${currentFile.name}`;
 
             const result = await window.electronAPI.processCsv({ 
-                filePath: currentFile.path, 
+                filePath: currentFile.path,
                 options 
             });
 
@@ -264,3 +293,78 @@ function showResultModal(count) {
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
+
+function setupScreenNavigation() {
+    elements.editCsvMode.onclick = () => switchScreen('edit');
+    elements.visualizeMode.onclick = () => switchScreen('visualize');
+    elements.backBtn.onclick = () => switchScreen('start');
+    elements.backBtn2.onclick = () => switchScreen('start');
+
+    // PCB Generator
+    elements.pickPcbFileBtn.onclick = () => {
+        elements.pcbFileInput.click();
+    };
+
+    elements.pcbFileInput.addEventListener('change', handlePCBFileSelect);
+    elements.generateSchemaBtn.onclick = generatePCBSchema;
+}
+
+let selectedPCBFile = null;
+
+async function handlePCBFileSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    selectedPCBFile = file;
+    elements.pcbFileName.textContent = file.name;
+    elements.pcbFileSelectedInfo.style.display = 'block';
+    elements.generateSchemaBtn.style.display = 'block';
+    elements.pcbSuccessMessage.style.display = 'none';
+}
+
+async function generatePCBSchema() {
+    if (!selectedPCBFile) {
+        alert('Выберите файл!');
+        return;
+    }
+
+    try {
+        const content = await selectedPCBFile.text();
+        
+        elements.pcbProgressContainer.style.display = 'block';
+        elements.pcbProgressBar.style.width = '30%';
+        elements.pcbProgressText.textContent = 'Подготовка файла...';
+        elements.pcbProgressText.style.display = 'block';
+
+        // Отправляем на обработку в main.js
+        const result = await window.electronAPI.generatePCBSchema({
+            csvContent: content,
+            fileName: selectedPCBFile.name
+        });
+
+        elements.pcbProgressBar.style.width = '100%';
+        elements.pcbProgressText.textContent = 'Схема успешно создана!';
+
+        setTimeout(() => {
+            elements.pcbSuccessMessage.style.display = 'block';
+            alert(`Схема сохранена в:\n${result.path}`);
+            
+            // Сброс
+            setTimeout(() => {
+                elements.pcbProgressContainer.style.display = 'none';
+                elements.pcbProgressBar.style.width = '0%';
+                elements.pcbProgressText.style.display = 'none';
+                elements.pcbFileSelectedInfo.style.display = 'none';
+                elements.generateSchemaBtn.style.display = 'none';
+                elements.pcbSuccessMessage.style.display = 'none';
+                selectedPCBFile = null;
+                elements.pcbFileInput.value = '';
+            }, 2000);
+        }, 500);
+
+    } catch (error) {
+        console.error('Ошибка при генерации схемы:', error);
+        alert('Ошибка: ' + error.message);
+        elements.pcbProgressContainer.style.display = 'none';
+    }
+}

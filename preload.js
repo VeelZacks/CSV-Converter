@@ -5,5 +5,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     openFilePicker: () => ipcRenderer.invoke('open-file-picker'),
     getSettings: () => ipcRenderer.invoke('get-settings'),
     saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
-    selectDirectory: () => ipcRenderer.invoke('select-directory')
+    selectDirectory: () => ipcRenderer.invoke('select-directory'),
+    generatePCBSchema: (data) => ipcRenderer.invoke('generate-pcb-schema', data)
 });

@@ -66,8 +66,25 @@ ipcMain.handle('open-file-picker', async () => {
 ipcMain.handle('process-csv', async (event, { filePath, options }) => {
     try {
         let rawContent = await fs.readFile(filePath, 'utf8');
-
         let lines = rawContent.split(/\r?\n/);
+
+        // Ищем строку, которая начинается с "Designator"
+        const headerIndex = lines.findIndex(line => 
+            line.includes('Designator') && 
+            line.includes('Layer') && 
+            line.includes('Center-X') && 
+            line.includes('Center-Y')
+        );
+
+        // Если маркер найден и не в начале - удаляем всё перед ним
+        if (headerIndex > 0) {
+            console.log(`Найден маркер на строке ${headerIndex}, удаляем первые ${headerIndex} строк`);
+            lines = lines.slice(headerIndex);
+        } else if (headerIndex === 0) {
+            console.log('Маркер уже в начале, ничего не удаляем');
+        } else {
+            console.log('Маркер не найден, обрабатываем весь файл как есть');
+        }
 
         let processedLines = lines.map((line, index) => {
             let currentLine = line;
