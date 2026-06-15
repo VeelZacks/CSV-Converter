@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const os = require('os');
+const {TextDecoder} = require('util'); // Кириллица
 
 let mainWindow = null;
 const settingsPath = path.join(app.getPath('userData'), 'app-settings.json');
@@ -32,6 +33,7 @@ function createWindow() {
     mainWindow = new BrowserWindow({
         width: 900,
         height: 750,
+        icon: path.join(__dirname, 'assets', 'icon.png'),
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -65,10 +67,31 @@ ipcMain.handle('open-file-picker', async () => {
 
 ipcMain.handle('process-csv', async (event, { filePath, options }) => {
     try {
-        let rawContent = await fs.readFile(filePath, 'utf8');
+        const buffer = await fs.readFile(filePath);
+        let encoding = 'utf-8';
+
+        // Проверяем наличие BOM  для точного определения
+        if (buffer.length >= 2 && buffer[0] === 0xFF && buffer[1] === 0xFE) {
+            encoding = 'utf-16le';
+        } else {
+            try {
+                new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+            } catch (e) {
+                // Если UTF-8 невалиден, значит это Windows-1251
+                encoding = 'windows-1251';
+            }
+        }
+
+        // Декодируем буфер в строку с определенной кодировкой
+        let rawContent = new TextDecoder(encoding).decode(buffer);
+
+        if (rawContent.charCodeAt(0) === 0xFEFF) {
+            rawContent = rawContent.slice(1);
+        }
+
         let lines = rawContent.split(/\r?\n/);
 
-        // Ищем строку, которая начинается с "Designator"
+        // Поиск строки с загаловками
         const headerIndex = lines.findIndex(line => 
             line.includes('Designator') && 
             line.includes('Layer') && 
@@ -76,7 +99,6 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
             line.includes('Center-Y')
         );
 
-        // Если маркер найден и не в начале - удаляем всё перед ним
         if (headerIndex > 0) {
             console.log(`Найден маркер на строке ${headerIndex}, удаляем первые ${headerIndex} строк`);
             lines = lines.slice(headerIndex);
@@ -121,9 +143,7 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
         }
 
         const finalLines = processedLines.filter(line => line !== null && line.length > 0);
-
         const rowCount = finalLines.length > 1 ? finalLines.length - 1 : 0;
-
         const finalContent = finalLines.join('\n');
 
         if (!finalContent) {
@@ -144,8 +164,8 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
             counter++;
         }
 
-        // Запись файла
-        await fs.writeFile(finalPath, finalContent, 'utf8');
+        const BOM = '\uFEFF';
+        await fs.writeFile(finalPath, BOM + finalContent, 'utf8');
 
         return { 
             success: true, 
