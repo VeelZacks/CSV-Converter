@@ -140,6 +140,8 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
             processedLines = processedLines.filter(l => l && !l.toLowerCase().includes('top'));
         } else if (options.deleteMode === 'bottom') {
             processedLines = processedLines.filter(l => l && !l.toLowerCase().includes('bottom'));
+        } else if (options.deleteMode === 'выводной'){
+            processedLines = processedLines.filter(l => l && !l.toLowerCase().includes('выводной'));
         }
 
         const finalLines = processedLines.filter(line => line !== null && line.length > 0);
