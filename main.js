@@ -124,7 +124,12 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
             }
 
             if (options.removeEmptyQuotes) {
-                currentLine = currentLine.replace(/"\s*"/g, '');
+                // 1. Удаляем пустые кавычки после запятой и до запятой (например, ,"", -> ,)
+                currentLine = currentLine.replace(/,\s*"\s*"\s*,/g, ',');
+                // 2. Удаляем пустые кавычки в самом конце строки после запятой (например, ,"" -> удалится)
+                currentLine = currentLine.replace(/,\s*"\s*"\s*$/g, '');
+                // 3. Удаляем пустые кавычки в самом начале строки перед запятой (например, "" , -> удалится)
+                currentLine = currentLine.replace(/^"\s*"\s*,/g, '');
             }
 
             let cells = currentLine.split(',').map(cell => cell.trim());
