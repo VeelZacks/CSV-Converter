@@ -147,7 +147,10 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
             processedLines = processedLines.filter(l => l && !l.toLowerCase().includes('bottom'));
         } else if (options.deleteMode === 'выводной'){
             processedLines = processedLines.filter(l => l && !l.toLowerCase().includes('выводной'));
+        } else if (options.deleteMode === 'геркон'){
+            processedLines = processedLines.filter(l => l && !l.toLowerCase().includes('геркон'));
         }
+
 
         const finalLines = processedLines.filter(line => line !== null && line.length > 0);
         const rowCount = finalLines.length > 1 ? finalLines.length - 1 : 0;

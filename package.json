@@ -1,6 +1,6 @@
 {
   "name": "csv-converter-app",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Преобразователь CSV",
   "main": "main.js",
   "scripts": {
