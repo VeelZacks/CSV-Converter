@@ -113,6 +113,11 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
 
             if (!currentLine.trim()) return null;
 
+            // Меняет русскую С на латинскую C для конденсаторов, чтобы избежать проблем с кодировкой 
+            currentLine = currentLine.replace(/\u0421/g, 'C').replace(/\u0441/g, 'c');
+            
+
+
             if (options.replacements && Array.isArray(options.replacements)) {
                 options.replacements.forEach(rule => {
                     if (rule.find) {
