@@ -65,139 +65,6 @@ ipcMain.handle('open-file-picker', async () => {
     return result.canceled ? [] : result.filePaths;
 });
 
-// ipcMain.handle('process-csv', async (event, { filePath, options }) => {
-//     try {
-//         const buffer = await fs.readFile(filePath);
-//         let encoding = 'utf-8';
-
-//         // Проверяем наличие BOM  для точного определения
-//         if (buffer.length >= 2 && buffer[0] === 0xFF && buffer[1] === 0xFE) {
-//             encoding = 'utf-16le';
-//         } else {
-//             try {
-//                 new TextDecoder('utf-8', { fatal: true }).decode(buffer);
-//             } catch (e) {
-//                 // Если UTF-8 невалиден, значит это Windows-1251
-//                 encoding = 'windows-1251';
-//             }
-//         }
-
-//         // Декодируем буфер в строку с определенной кодировкой
-//         let rawContent = new TextDecoder(encoding).decode(buffer);
-
-//         rawContent = rawContent.replace(/\u0421/g, 'C').replace(/\u0441/g, 'c');
-
-//         if (rawContent.charCodeAt(0) === 0xFEFF) {
-//             rawContent = rawContent.slice(1);
-//         }
-
-//         let lines = rawContent.split(/\r?\n/);
-
-//         // Поиск строки с загаловками
-//         const headerIndex = lines.findIndex(line => 
-//             line.includes('Designator') && 
-//             line.includes('Layer') && 
-//             line.includes('Center-X') && 
-//             line.includes('Center-Y')
-//         );
-
-//         if (headerIndex > 0) {
-//             console.log(`Найден маркер на строке ${headerIndex}, удаляем первые ${headerIndex} строк`);
-//             lines = lines.slice(headerIndex);
-//         } else if (headerIndex === 0) {
-//             console.log('Маркер уже в начале, ничего не удаляем');
-//         } else {
-//             console.log('Маркер не найден, обрабатываем весь файл как есть');
-//         }
-
-//         let processedLines = lines.map((line, index) => {
-//             let currentLine = line;
-
-//             if (!currentLine.trim()) return null;
-
-//             //  Меняет русскую С на латинскую C для конденсаторов, чтобы избежать проблем с кодировкой 
-//             // currentLine = currentLine.replace(/\u0421/g, 'C').replace(/\u0441/g, 'c');
-            
-//             if (options.replacements && Array.isArray(options.replacements)) {
-//                 options.replacements.forEach(rule => {
-//                     if (rule.find) {
-//                         const escapedSearch = rule.find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-//                         const searchRegExp = new RegExp(escapedSearch, 'g');
-//                         currentLine = currentLine.replace(searchRegExp, rule.replace || '');
-//                     }
-//                 });
-//             }
-
-//             if (options.removeEmptyQuotes) {
-//                 // 1. Удаляем пустые кавычки после запятой и до запятой (например, ,"", -> ,)
-//                 currentLine = currentLine.replace(/,\s*"\s*"\s*,/g, ',');
-//                 // 2. Удаляем пустые кавычки в самом конце строки после запятой (например, ,"" -> удалится)
-//                 currentLine = currentLine.replace(/,\s*"\s*"\s*$/g, '');
-//                 // 3. Удаляем пустые кавычки в самом начале строки перед запятой (например, "" , -> удалится)
-//                 currentLine = currentLine.replace(/^"\s*"\s*,/g, '');
-//             }
-
-//             let cells = currentLine.split(',').map(cell => cell.trim());
-
-//             while (cells.length > 0 && cells[cells.length - 1] === "") {
-//                 cells.pop();
-//             }
-
-//             return cells.join(',');
-//         });
-
-//         if (options.deleteMode === 'top') {
-//             processedLines = processedLines.filter(l => l && !l.toLowerCase().includes('top'));
-//         } else if (options.deleteMode === 'bottom') {
-//             processedLines = processedLines.filter(l => l && !l.toLowerCase().includes('bottom'));
-//         } else if (options.deleteMode === 'выводной'){
-//             processedLines = processedLines.filter(l => l && !l.toLowerCase().includes('выводной'));
-//         } else if (options.deleteMode === 'геркон'){
-//             processedLines = processedLines.filter(l => l && !l.toLowerCase().includes('геркон'));
-//         }
-
-
-//         const finalLines = processedLines.filter(line => line !== null && line.length > 0);
-//         const rowCount = finalLines.length > 1 ? finalLines.length - 1 : 0;
-//         const finalContent = finalLines.join('\n');
-
-//         if (!finalContent) {
-//             throw new Error('Файл пуст после обработки. Проверьте правила замен.');
-//         }
-
-//         const outputDir = appSettings.saveDirectory || path.join(os.homedir(), 'Downloads');
-//         await fs.mkdir(outputDir, { recursive: true });
-
-//         const parsedPath = path.parse(filePath);
-//         const baseName = `${parsedPath.name}_fixed`;
-//         const extension = parsedPath.ext || '.csv';
-        
-//         let finalPath = path.join(outputDir, baseName + extension);
-//         let counter = 1;
-//         while (fsSync.existsSync(finalPath)) {
-//             finalPath = path.join(outputDir, `${baseName}(${counter})${extension}`);
-//             counter++;
-//         }
-
-//         const BOM = '\uFEFF';
-//         await fs.writeFile(finalPath, BOM + finalContent, 'utf8');
-
-//         return { 
-//             success: true, 
-//             outputPath: finalPath, 
-//             rowCount: rowCount 
-//         };
-
-//     } catch (error) {
-//         console.error('Ошибка при обработке CSV:', error);
-//         return { 
-//             success: false, 
-//             error: error.message || 'Ошибка при обработке' 
-//         };
-//     }
-// });
-
-
 ipcMain.handle('process-csv', async (event, { filePath, options }) => {
     try {
         const buffer = await fs.readFile(filePath);
@@ -220,7 +87,7 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
             rawContent = rawContent.slice(1);
         }
 
-        // 1. Гарантированная замена русской 'С' на английскую 'C' (и строчной тоже)
+        // Гарантированная замена русской 'С' на английскую 'C'
         rawContent = rawContent.replace(/\u0421/g, 'C').replace(/\u0441/g, 'c');
 
         let lines = rawContent.split(/\r?\n/);
@@ -233,16 +100,22 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
             line.includes('Center-Y')
         );
 
+        let headerLine = '';
         if (headerIndex > 0) {
             console.log(`Найден маркер на строке ${headerIndex}, удаляем первые ${headerIndex} строк`);
+            headerLine = lines[headerIndex]; // Сохраняем заголовок для NC-файла
             lines = lines.slice(headerIndex);
         } else if (headerIndex === 0) {
             console.log('Маркер уже в начале, ничего не удаляем');
+            headerLine = lines[0];
         } else {
             console.log('Маркер не найден, обрабатываем весь файл как есть');
+            headerLine = lines[0] || '';
         }
 
-        let processedLines = lines.map((line) => {
+        let ncLines = []; // Сюда будем собирать компоненты с NC
+
+        let processedLines = lines.map((line, idx) => {
             let currentLine = line;
             if (!currentLine.trim()) return null;
 
@@ -268,10 +141,29 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
                 cells.pop();
             }
 
-            return cells.join(',');
+            const cleanLine = cells.join(',');
+
+            // Пропускаем строку с заголовками, чтобы она не улетела в NC-компоненты
+            if (idx === 0 && headerIndex >= 0) {
+                return cleanLine;
+            }
+
+            // Проверка последней колонки на содержание NC
+            if (cells.length > 0) {
+                const lastCell = cells[cells.length - 1].toLowerCase();
+                if (lastCell.includes('nc')) {
+                    ncLines.push(cleanLine); 
+                    
+                    // Если выбран режим удаления NC, убираем из основного файла
+                    if (options.deleteMode === 'nc') {
+                        return null; 
+                    }
+                }
+            }
+
+            return cleanLine;
         });
 
-        // Фильтрация по режиму удаления
         if (options.deleteMode === 'top') {
             processedLines = processedLines.filter(l => l && !l.toLowerCase().includes('top'));
         } else if (options.deleteMode === 'bottom') {
@@ -294,11 +186,8 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
         await fs.mkdir(outputDir, { recursive: true });
 
         const parsedPath = path.parse(filePath);
-        
-        // 2. Умная очистка имени файла от старых суффиксов
-        // Регулярное выражение удаляет _fixed, _top или _bottom с конца имени, если они там есть
-        let cleanName = parsedPath.name.replace(/_(?:fixed|top|bottom)$/i, '');
-        
+        let cleanName = parsedPath.name.replace(/_(?:fixed|top|bottom|nc|only_nc)$/i, '');
+
         let suffix = '_fixed';
         if (options.deleteMode === 'top') {
             suffix = '_bottom';
@@ -308,6 +197,7 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
 
         const baseName = `${cleanName}${suffix}`;
         const extension = parsedPath.ext || '.csv';
+        const BOM = '\uFEFF';
         
         let finalPath = path.join(outputDir, baseName + extension);
         let counter = 1;
@@ -315,13 +205,32 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
             finalPath = path.join(outputDir, `${baseName}(${counter})${extension}`);
             counter++;
         }
-
-        const BOM = '\uFEFF';
         await fs.writeFile(finalPath, BOM + finalContent, 'utf8');
+
+        // Если найдены компоненты с NC И вя опцих включено сохранение NC в отдельный файл
+        let ncOutputPath = null;
+        if (ncLines.length > 0 && options.saveNcSeparately) {
+            // Формируем контент: заголовок + строки с NC
+            const ncContentLines = [];
+            if (headerLine) ncContentLines.push(headerLine);
+            ncContentLines.push(...ncLines);
+            
+            const ncFinalContent = ncContentLines.join('\n');
+            const ncBaseName = `${cleanName}_only_nc`;
+            
+            ncOutputPath = path.join(outputDir, ncBaseName + extension);
+            let ncCounter = 1;
+            while (fsSync.existsSync(ncOutputPath)) {
+                ncOutputPath = path.join(outputDir, `${ncBaseName}(${ncCounter})${extension}`);
+                ncCounter++;
+            }
+            await fs.writeFile(ncOutputPath, BOM + ncFinalContent, 'utf8');
+        }
 
         return { 
             success: true, 
-            outputPath: finalPath, 
+            outputPath: finalPath,
+            ncOutputPath: ncOutputPath, 
             rowCount: rowCount 
         };
 
@@ -333,6 +242,7 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
         };
     }
 });
+
 
 app.whenReady().then(createWindow);
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

@@ -502,3 +502,87 @@ body.dark-theme .progress-container {
     background: rgba(0, 122, 255, 0.1);
     border-color: rgba(0, 122, 255, 0.15);
 }
+
+.nc-toggle-container {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.03);
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-top: 14px;
+    border: 1px dashed rgba(0, 0, 0, 0.12);
+    transition: all 0.3s ease;
+}
+
+.dark-theme .nc-toggle-container {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.nc-toggle-label {
+    flex-grow: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    cursor: pointer;
+    user-select: none;
+    padding-right: 10px;
+}
+
+.dark-theme .nc-toggle-label {
+    color: #e0e0e0;
+}
+
+.nc-subtext {
+    color: #888;
+    font-size: 12px;
+}
+
+/* Стили Toggle Switch */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.switch input { 
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc;
+    transition: .3s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+input:checked + .slider {
+    background-color: #0A84FF; 
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px #0A84FF;
+}
+
+input:checked + .slider:before {
+    transform: translateX(20px);
+}

@@ -32,6 +32,8 @@ const elements = {
     rulesContainer: document.getElementById('replacementRulesContainer'),
     addRuleBtn: document.getElementById('addRuleBtn'),
     deleteRowsSelect: document.getElementById('deleteRowsSelect'),
+
+    saveNcSeparatelyCb: document.getElementById('saveNcSeparately'),
     
     // PCB Visualizer
     pickPcbFileBtn: document.getElementById('pickPcbFileBtn'),
@@ -56,9 +58,12 @@ async function initApp() {
     currentSettings = await window.electronAPI.getSettings();
     applyTheme(currentSettings.theme);
     updateDirectoryDisplay(currentSettings.saveDirectory);
+    
     setupEventListeners();
     setupScreenNavigation();
 }
+
+
 
 function applyTheme(theme) {
     document.body.classList.toggle('dark-theme', theme === 'dark');
@@ -206,10 +211,14 @@ async function startProcessing() {
         replace: row.querySelector('.replace-text').value
     })).filter(rule => rule.find !== ''); 
 
+    const saveNcSeparatelyValue = elements.saveNcSeparatelyCb ? elements.saveNcSeparatelyCb.checked : false;
+
     const options = {
         removeEmptyQuotes: elements.removeQuotesCb.checked,
         replacements: replacements, 
-        deleteMode: elements.deleteRowsSelect.value 
+        deleteMode: elements.deleteRowsSelect.value,
+
+        saveNcSeparately: saveNcSeparatelyValue
     };
 
     elements.progressContainer.style.display = 'block';
@@ -286,6 +295,10 @@ function resetUI() {
     elements.convertBtn.disabled = true; 
 
     console.log('Интерфейс очищен, базовое поле замены возвращено.');
+
+    if (elements.saveNcSeparatelyCb) {
+        elements.saveNcSeparatelyCb.checked = false;
+    }
 }
 
 function showResultModal(count) {

@@ -16,12 +16,13 @@
         </div> 
         <div class="block_converter">
             <div class="processing-rules">
-                <div class="rule-item">
+                <!-- <div class="rule-item">
                     <label class="checkbox-container">
                         <input type="checkbox" id="removeEmptyQuotes" checked>
                         <span>Удалять пустые кавычки ("")</span>
                     </label>
-                </div>
+                    
+                </div> -->
                 <div id="replacementRulesContainer">
                     <div class="rule-item replacement-row">
                         <div class="input-group">
@@ -44,7 +45,28 @@
                         <option value="bottom">Удалить строки с "Bottom"</option>
                         <option value="выводной">Удалить строки с "Выводными компонентами"</option>
                         <option value="геркон">Удалить строки с "Геркон"</option>
+                        <option value="nc">Удалить строки с "NC"</option>
                     </select>
+
+                    <div class="nc-toggle-container" style="margin-bottom: 10px;">
+                        <label for="removeEmptyQuotes" class="nc-toggle-label">
+                            Удалять пустые кавычки <span class="nc-subtext">("")</span>
+                        </label>
+                        <label class="switch">
+                            <input type="checkbox" id="removeEmptyQuotes">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div id="saveNcSeparatelyContainer" class="nc-toggle-container">
+                        <label for="saveNcSeparately" class="nc-toggle-label">
+                            Сохранять отфильтрованные компоненты с NC в отдельный файл <span class="nc-subtext">(_only_nc)</span>
+                        </label>
+                        <label class="switch">
+                            <input type="checkbox" id="saveNcSeparately">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                 </div>
             </div>
             <div class="selection-area">
