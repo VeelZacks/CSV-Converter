@@ -120,6 +120,21 @@
                 <div class="directory-info" id="currentDirectory">Загрузки (по умолчанию)</div>
                 <button id="selectDirectoryBtn" class="select-dir-btn">Изменить папку</button>
             </div>
+
+            <div class="setting-item" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+                <!-- Добавлен класс logs-section-title, убран жесткий цвет из style -->
+                <label class="logs-section-title">Журнал процессов:</label>
+                
+                <button id="open-logs-btn" class="btn-logs">
+                    📋 Показать логи работы
+                </button>
+                
+                <div id="logs-container" style="display: none; margin-top: 12px;">
+                    <textarea id="logs-textarea" readonly></textarea>
+                </div>
+            </div>
+
+
         </div>
     </div>
 

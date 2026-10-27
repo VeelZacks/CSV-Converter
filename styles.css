@@ -502,7 +502,6 @@ body.dark-theme .progress-container {
     background: rgba(0, 122, 255, 0.1);
     border-color: rgba(0, 122, 255, 0.15);
 }
-
 .nc-toggle-container {
     display: flex;
     align-items: center;
@@ -585,4 +584,72 @@ input:focus + .slider {
 
 input:checked + .slider:before {
     transform: translateX(20px);
+}
+
+
+.btn-logs {
+    background-color: #f0f4f8;
+    color: #1e4e8c;
+    border: 1px solid #cbd5e1;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-logs:hover {
+    background-color: #e2e8f0;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+
+.btn-logs:active {
+    transform: translateY(1px);
+}
+
+#logs-textarea {
+    width: 100%;
+    height: 180px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #24292e;
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 10px;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.logs-section-title {
+    display: block; 
+    margin-bottom: 8px; 
+    font-weight: 600; 
+    color: #333;
+}
+
+body.dark .logs-section-title {
+    color: #ffffff; 
+}
+
+body.dark #logs-textarea {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border-color: #3c3c3c;
+}
+
+body.dark .btn-logs {
+    background-color: #2d3748;
+    color: #e2e8f0;
+    border-color: #4a5568;
+}
+body.dark .btn-logs:hover {
+    background-color: #4a5568;
+    color: #ffffff;
 }

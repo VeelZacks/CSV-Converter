@@ -6,5 +6,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSettings: () => ipcRenderer.invoke('get-settings'),
     saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
     selectDirectory: () => ipcRenderer.invoke('select-directory'),
-    generatePCBSchema: (data) => ipcRenderer.invoke('generate-pcb-schema', data)
+    generatePCBSchema: (data) => ipcRenderer.invoke('generate-pcb-schema', data),
+    getLatestLogs: () => ipcRenderer.invoke('get-latest-logs')
 });

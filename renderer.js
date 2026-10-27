@@ -381,3 +381,25 @@ async function generatePCBSchema() {
         elements.pcbProgressContainer.style.display = 'none';
     }
 }
+
+// логи
+document.getElementById('open-logs-btn').addEventListener('click', async () => {
+    const container = document.getElementById('logs-container');
+    const textarea = document.getElementById('logs-textarea');
+    
+    // Если логи уже открыты — просто скрываем их обратно
+    if (container.style.display === 'block') {
+        container.style.display = 'none';
+        return;
+    }
+
+    const result = await window.electronAPI.getLatestLogs(); 
+    if (result.success) {
+        textarea.value = result.logs;
+        container.style.display = 'block';
+        // Автопрокрутка вниз к последним записям
+        textarea.scrollTop = textarea.scrollHeight; 
+    } else {
+        alert('Не удалось загрузить логи: ' + result.error);
+    }
+});
