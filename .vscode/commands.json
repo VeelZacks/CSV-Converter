@@ -1,0 +1,27 @@
+[
+  {
+    "id": "1794159160170",
+    "title": "Перед работой(1)",
+    "command": "git checkout main"
+  },
+  {
+    "id": "1794159186893",
+    "title": "Перед работой(2)",
+    "command": "git pull origin main"
+  },
+  {
+    "id": "1794159214224",
+    "title": "Сохранить",
+    "command": "git add ."
+  },
+  {
+    "id": "1794159226749",
+    "title": "Коммит",
+    "command": "git commit -m \"Кратко и ясно: что сделано\""
+  },
+  {
+    "id": "1794160397402",
+    "title": "Запуск проекта на electron",
+    "command": "npm run start"
+  }
+]

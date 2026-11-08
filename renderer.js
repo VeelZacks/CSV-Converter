@@ -45,6 +45,13 @@ const elements = {
     pcbProgressBar: document.getElementById('pcbProgressBar'),
     pcbProgressText: document.getElementById('pcbProgressText'),
     pcbSuccessMessage: document.getElementById('pcbSuccessMessage'),
+
+
+
+    duplicateModal: document.getElementById('duplicateModal'),
+    duplicateGroupsContainer: document.getElementById('duplicateGroupsContainer'), 
+    confirmMergeBtn: document.getElementById('confirmMergeBtn'),
+    skipMergeBtn: document.getElementById('skipMergeBtn'),
 };
 
 function switchScreen(mode) {
@@ -62,8 +69,6 @@ async function initApp() {
     setupEventListeners();
     setupScreenNavigation();
 }
-
-
 
 function applyTheme(theme) {
     document.body.classList.toggle('dark-theme', theme === 'dark');
@@ -93,7 +98,6 @@ function setupEventListeners() {
             await window.electronAPI.saveSettings({ saveDirectory: dirPath });
         }
     };
-    // Настройки редактирования файла
     elements.addRuleBtn.onclick = () => {
         const row = document.createElement('div');
         row.className = 'rule-item replacement-row';
@@ -108,7 +112,6 @@ function setupEventListeners() {
         elements.rulesContainer.appendChild(row);
     };
 
-    // Удаление строки 
     elements.rulesContainer.onclick = (e) => {
         if (e.target.classList.contains('remove-rule-btn')) {
             const rows = document.querySelectorAll('.replacement-row');
@@ -149,6 +152,35 @@ function setupEventListeners() {
 
     elements.fileLabel.onclick = pickFiles;
     elements.convertBtn.onclick = startProcessing;
+
+    document.getElementById('skipMergeBtn').onclick = () => {
+        document.getElementById('duplicateModal').style.display = 'none';
+        executeProcessing({}); // Пользователь отказался, передаем пустой объект
+    };
+
+    document.getElementById('confirmMergeBtn').onclick = () => {
+        const mergeMap = {};
+        
+        activeDuplicateGroups.forEach(group => {
+            const groupDiv = document.getElementById(group.id);
+            if (!groupDiv) return;
+
+            const targetName = groupDiv.querySelector('.target-input').value.trim();
+            if (!targetName) return;
+
+            const checkboxes = groupDiv.querySelectorAll('.component-checkbox');
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    
+                    mergeMap[cb.value] = targetName;
+                }
+            });
+        });
+
+        document.getElementById('duplicateModal').style.display = 'none';
+        executeProcessing(mergeMap); 
+    };
+
 }
 
 async function pickFiles() {
@@ -202,9 +234,87 @@ window.removeFile = (index) => {
     updateFileList();
 };
 
+let activeDuplicateGroups = [];
+
 async function startProcessing() {
     if (selectedFiles.length === 0) return;
 
+    elements.convertBtn.disabled = true;
+    elements.progressContainer.style.display = 'block';
+    elements.progressText.textContent = 'Анализ структуры парт-номеров на дубликаты...';
+
+    try {
+        const filePaths = selectedFiles.map(f => f.path);
+        const analysis = await window.electronAPI.analyzeCsv({ filePaths });
+
+        if (analysis.success && analysis.groups && analysis.groups.length > 0) {
+            activeDuplicateGroups = analysis.groups;
+            renderDuplicateGroups(analysis.groups);
+            document.getElementById('duplicateModal').style.display = 'flex';
+        } else {
+            elements.progressText.textContent = 'Похожих компонентов не найдено. Запуск конвертации...';
+            executeProcessing({});
+        }
+    } catch (err) {
+        alert(`Ошибка при анализе дубликатов: ${err.message}`);
+        executeProcessing({}); 
+    }
+}
+
+
+function renderDuplicateGroups(groups) {
+    elements.duplicateGroupsContainer.innerHTML = '';
+
+    groups.forEach(group => {
+        if (!group.components || group.components.length === 0) return;
+
+        const groupDiv = document.createElement('div');
+        groupDiv.id = group.id;
+        groupDiv.className = 'group-container'; 
+
+        let defaultTarget = group.components[0].name;
+        let bestTolerance = Infinity;
+
+        group.components.forEach(comp => {
+            // Ищем процентное значение в имени (например, 5%, 10%, 1%)
+            const tolMatch = comp.name.match(/([0-9.]+)\s*%/);
+            if (tolMatch) {
+                const tolValue = parseFloat(tolMatch[1]);
+                // Чем меньше процент, тем точнее компонент, выбираем его эталоном
+                if (tolValue < bestTolerance) {
+                    bestTolerance = tolValue;
+                    defaultTarget = comp.name;
+                }
+            }
+        });
+
+
+        let html = `<div class="group-title">Похожая группа компонентов:</div>`;
+        
+        group.components.forEach((comp, idx) => {
+            html += `
+                <div class="duplicate-item">
+                    <input type="checkbox" class="component-checkbox" value="${comp.name}" id="${group.id}_${idx}" checked>
+                    <label for="${group.id}_${idx}">
+                        <strong>${comp.name}</strong> <span class="count-badge">(встречается: ${comp.count} раз)</span>
+                    </label>
+                </div>
+            `;
+        });
+
+        html += `
+            <div class="target-input-block">
+                <label>Имя после объединения выбранных:</label>
+                <input type="text" class="target-input" value="${defaultTarget}">
+            </div>
+        `;
+        
+        groupDiv.innerHTML = html;
+        elements.duplicateGroupsContainer.appendChild(groupDiv);
+    });
+}
+
+async function executeProcessing(mergeMap) {
     const replacementRows = document.querySelectorAll('.replacement-row');
     const replacements = Array.from(replacementRows).map(row => ({
         find: row.querySelector('.find-text').value,
@@ -217,25 +327,20 @@ async function startProcessing() {
         removeEmptyQuotes: elements.removeQuotesCb.checked,
         replacements: replacements, 
         deleteMode: elements.deleteRowsSelect.value,
-
-        saveNcSeparately: saveNcSeparatelyValue
+        saveNcSeparately: saveNcSeparatelyValue,
+        mergeMap: mergeMap 
     };
 
     elements.progressContainer.style.display = 'block';
     elements.successMessage.style.display = 'none';
     elements.convertBtn.disabled = true;
 
-    let totalRowsProcessed = 0; // Счетчик строк
-
-    elements.progressContainer.style.display = 'block';
-    elements.successMessage.style.display = 'none';
-    elements.convertBtn.disabled = true;
+    let totalRowsProcessed = 0;
 
     try {
         for (let i = 0; i < selectedFiles.length; i++) {
             const currentFile = selectedFiles[i];
             
-            // Обновление прогресс-бара
             const progress = Math.round(((i + 1) / selectedFiles.length) * 100);
             elements.progressBar.style.width = `${progress}%`;
             elements.progressText.textContent = `Обработка (${i + 1}/${selectedFiles.length}): ${currentFile.name}`;
@@ -249,7 +354,6 @@ async function startProcessing() {
                 throw new Error(`Файл "${currentFile.name}": ${result.error}`);
             }
 
-            // Плюсуем количество строк результат из main
             totalRowsProcessed += result.rowCount;
         }
 
@@ -265,10 +369,10 @@ async function startProcessing() {
         console.error('Ошибка в процессе обработки:', error);
         elements.progressText.textContent = 'Ошибка обработки';
         elements.convertBtn.disabled = false; 
-        
         alert(`Произошла ошибка:\n${error.message}`);
     }
 }
+
 
 function resetUI() {
     selectedFiles = []; 
@@ -280,7 +384,7 @@ function resetUI() {
     elements.successMessage.style.display = 'none';
 
     if (elements.rulesContainer) {
-        elements.rulesContainer.innerHTML = ''; // Сносим всё старое
+        elements.rulesContainer.innerHTML = ''; 
         elements.addRuleBtn.click(); 
     }
 
@@ -313,7 +417,6 @@ function setupScreenNavigation() {
     elements.backBtn.onclick = () => switchScreen('start');
     elements.backBtn2.onclick = () => switchScreen('start');
 
-    // PCB Generator
     elements.pickPcbFileBtn.onclick = () => {
         elements.pcbFileInput.click();
     };
@@ -349,7 +452,6 @@ async function generatePCBSchema() {
         elements.pcbProgressText.textContent = 'Подготовка файла...';
         elements.pcbProgressText.style.display = 'block';
 
-        // Отправляем на обработку в main.js
         const result = await window.electronAPI.generatePCBSchema({
             csvContent: content,
             fileName: selectedPCBFile.name
@@ -386,8 +488,7 @@ async function generatePCBSchema() {
 document.getElementById('open-logs-btn').addEventListener('click', async () => {
     const container = document.getElementById('logs-container');
     const textarea = document.getElementById('logs-textarea');
-    
-    // Если логи уже открыты — просто скрываем их обратно
+
     if (container.style.display === 'block') {
         container.style.display = 'none';
         return;
@@ -397,7 +498,6 @@ document.getElementById('open-logs-btn').addEventListener('click', async () => {
     if (result.success) {
         textarea.value = result.logs;
         container.style.display = 'block';
-        // Автопрокрутка вниз к последним записям
         textarea.scrollTop = textarea.scrollHeight; 
     } else {
         alert('Не удалось загрузить логи: ' + result.error);

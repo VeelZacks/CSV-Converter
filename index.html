@@ -16,13 +16,6 @@
         </div> 
         <div class="block_converter">
             <div class="processing-rules">
-                <!-- <div class="rule-item">
-                    <label class="checkbox-container">
-                        <input type="checkbox" id="removeEmptyQuotes" checked>
-                        <span>Удалять пустые кавычки ("")</span>
-                    </label>
-                    
-                </div> -->
                 <div id="replacementRulesContainer">
                     <div class="rule-item replacement-row">
                         <div class="input-group">
@@ -135,6 +128,21 @@
             </div>
 
 
+        </div>
+    </div>
+
+    <!-- Модальное окно для отображения и слияния дубликатов компонентов -->
+    <div id="duplicateModal" class="modal">
+        <div class="modal-content">
+            <h3>Обнаружены похожие компоненты</h3>
+            <p>Система нашла парт-номера с высокой степенью схожести. Отметьте те, которые вы хотите объединить в одну позицию, и укажите для них единое финальное имя:</p>
+            
+            <div id="duplicateGroupsContainer"></div>
+            
+            <div class="modal-actions">
+                <button id="skipMergeBtn" class="btn">Оставить всё как есть</button>
+                <button id="confirmMergeBtn" class="btn">Применить объединения</button>
+            </div>
         </div>
     </div>
 

@@ -30,6 +30,57 @@ function saveSettings(settings) {
 
 let appSettings = loadSettings();
 
+// Функция подсчета расстояния Левенштейна
+function editDistance(s1, s2) {
+    s1 = s1.toLowerCase(); s2 = s2.toLowerCase();
+    const costs = [];
+    for (let i = 0; i <= s1.length; i++) {
+        let lastValue = i;
+        for (let j = 0; j <= s2.length; j++) {
+            if (i === 0) costs[j] = j;
+            else {
+                if (j > 0) {
+                    let newValue = costs[j - 1];
+                    if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+                        newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                    }
+                    costs[j - 1] = lastValue;
+                    lastValue = newValue;
+                }
+            }
+        }
+        if (i > 0) costs[s2.length] = lastValue;
+    }
+    return costs[s2.length];
+}
+
+// Функция определения процента схожести строк (от 0.0 до 1.0)
+function getSimilarity(s1, s2) {
+    let longer = s1, shorter = s2;
+    if (s1.length < s2.length) { longer = s2; shorter = s1; }
+    const longerLength = longer.length;
+    if (longerLength === 0) return 1.0;
+    return (longerLength - editDistance(longer, shorter)) / parseFloat(longerLength);
+}
+
+// Вспомогательная функция для чтения файлов в правильной кодировке
+async function readAndNormalizeFile(filePath) {
+    const buffer = await fs.readFile(filePath);
+    let encoding = 'utf-8';
+    if (buffer.length >= 2 && buffer[0] === 0xFF && buffer[1] === 0xFE) {
+        encoding = 'utf-16le';
+    } else {
+        try {
+            new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+        } catch (e) { encoding = 'windows-1251'; }
+    }
+    let rawContent = new TextDecoder(encoding).decode(buffer);
+    if (rawContent.charCodeAt(0) === 0xFEFF) rawContent = rawContent.slice(1);
+    return rawContent.replace(/\u0421/g, 'C').replace(/\u0441/g, 'c').split(/\r?\n/);
+}
+
+
+
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 900,
@@ -67,6 +118,136 @@ ipcMain.handle('open-file-picker', async () => {
     return result.canceled ? [] : result.filePaths;
 });
 
+
+ipcMain.handle('analyze-csv', async (event, { filePaths }) => {
+    try {
+        const allPartNumbers = new Set();
+        const partCounts = {};
+
+        // Вспомогательная функция для перевода номинала в базовые единицы (Фарады / Омы)
+        function parseNominalValue(str) {
+            if (!str) return null;
+            const clean = str.toLowerCase().trim();
+            const match = clean.match(/([0-9]+[unpmkr.]*[0-9]*)/);
+            if (!match) return null;
+            
+            let valStr = match[1];
+            if (/[unpmkr]/.test(valStr) && !/^[unpmkr]/.test(valStr) && !/[unpmkr]$/.test(valStr)) {
+                valStr = valStr.replace(/([unpmkr])/, '.$1').replace(/[unpmkr]/, '');
+                let multiplier = 1;
+                if (clean.includes('u')) multiplier = 1e-6;
+                else if (clean.includes('n')) multiplier = 1e-9;
+                else if (clean.includes('p')) multiplier = 1e-12;
+                else if (clean.includes('m')) multiplier = 1e-3;
+                else if (clean.includes('k')) multiplier = 1e3;
+                return parseFloat(valStr) * multiplier;
+            }
+            
+            let num = parseFloat(valStr);
+            if (isNaN(num)) return null;
+            
+            if (clean.includes('u')) return num * 1e-6;
+            if (clean.includes('n')) return num * 1e-9;
+            if (clean.includes('p')) return num * 1e-12;
+            if (clean.includes('m') && !clean.includes('mq') && !clean.includes('mгн')) return num * 1e-3;
+            if (clean.includes('k') && !clean.includes('kv')) return num * 1e3;
+            
+            return num;
+        }
+
+        for (const filePath of filePaths) {
+            const lines = await readAndNormalizeFile(filePath);
+            
+            const headerIndex = lines.findIndex(line => 
+                line.toLowerCase().includes('designator') && 
+                line.toLowerCase().includes('layer') && 
+                line.toLowerCase().includes('center-x')
+            );
+            if (headerIndex === -1) continue;
+
+            const headerCells = lines[headerIndex].replace(/"/g, '').split(',').map(c => c.trim().toLowerCase());
+            let partIdx = headerCells.findIndex(c => c.includes('part number') || c.includes('comment') || c.includes('partnumber'));
+            if (partIdx === -1) partIdx = headerCells.findIndex(c => c.includes('val') || c.includes('device')); 
+            if (partIdx === -1) continue;
+
+            const dataLines = lines.slice(headerIndex + 1);
+            for (const line of dataLines) {
+                if (!line.trim()) continue;
+                const cells = line.replace(/"/g, '').split(',').map(c => c.trim());
+                if (cells[partIdx]) {
+                    const pn = cells[partIdx];
+                    allPartNumbers.add(pn);
+                    partCounts[pn] = (partCounts[pn] || 0) + 1;
+                }
+            }
+        }
+
+        const items = Array.from(allPartNumbers).filter(p => p && p.trim().length > 2);
+        const groups = [];
+        const visited = new Set();
+
+        for (let i = 0; i < items.length; i++) {
+            if (visited.has(items[i])) continue;
+            const currentGroup = [items[i]];
+
+            for (let j = i + 1; j < items.length; j++) {
+                if (visited.has(items[j])) continue;
+                
+                // Проверка физического номинала (емкость/сопротивление)
+                const nominalI = parseNominalValue(items[i]);
+                const nominalJ = parseNominalValue(items[j]);
+                let isSameNominal = true;
+                if (nominalI !== null && nominalJ !== null) {
+                    if (Math.abs(nominalI - nominalJ) > (Math.min(nominalI, nominalJ) * 0.01)) {
+                        isSameNominal = false; 
+                    }
+                }
+
+                // Жесткая проверка рабочего напряжения (вольтаж)
+                let isSameVoltage = true;
+                const voltRegex = /(?:^|[^a-zA-Z0-9])([0-9]+[.]?[0-9]*)\s*v(?:$|[^a-zA-Z])/i;
+                const voltI = items[i].match(voltRegex);
+                const voltJ = items[j].match(voltRegex);
+                if (voltI && voltJ) {
+                    if (voltI[1] !== voltJ[1]) {
+                        isSameVoltage = false; 
+                    }
+                }
+
+                // Жесткая проверка светодиодов (LED) на разный цвет
+                let isSameLedColor = true;
+                const lowerI = items[i].toLowerCase();
+                const lowerJ = items[j].toLowerCase();
+                if (lowerI.includes('fyls') || lowerI.includes('kp-') || lowerI.includes('led')) {
+                    const colorI = lowerI.match(/(ugc|bubc|surck|urck|vgc|ygc)$/);
+                    const colorJ = lowerJ.match(/(ugc|bubc|surck|urck|vgc|ygc)$/);
+                    if (colorI && colorJ && colorI[1] !== colorJ[1]) {
+                        isSameLedColor = false; 
+                    }
+                }
+
+                // Слияние разрешено только если совпали все физические критерии
+                if (isSameNominal && isSameVoltage && isSameLedColor && getSimilarity(items[i], items[j]) >= 0.80) {
+                    currentGroup.push(items[j]);
+                    visited.add(items[j]);
+                }
+            }
+
+            if (currentGroup.length > 1) {
+                visited.add(items[i]);
+                groups.push({
+                    id: `group_${i}`,
+                    components: currentGroup.map(name => ({ name, count: partCounts[name] || 0 }))
+                });
+            }
+        }
+
+        return { success: true, groups };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
 ipcMain.handle('process-csv', async (event, { filePath, options }) => {
     const logLines = [
         `=== Старт обработки: ${filePath} ===`,
@@ -75,53 +256,31 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
     ];
 
     try {
-        const buffer = await fs.readFile(filePath);
-        let encoding = 'utf-8';
-
-        if (buffer.length >= 2 && buffer[0] === 0xFF && buffer[1] === 0xFE) {
-            encoding = 'utf-16le';
-        } else {
-            try {
-                new TextDecoder('utf-8', { fatal: true }).decode(buffer);
-            } catch (e) {
-                encoding = 'windows-1251';
-            }
-        }
-        logLines.push(`Кодировка: ${encoding}`);
-
-        let rawContent = new TextDecoder(encoding).decode(buffer);
-
-        if (rawContent.charCodeAt(0) === 0xFEFF) {
-            rawContent = rawContent.slice(1);
-            logLines.push('Удален BOM символ');
-        }
-
-        const rusCMatches = (rawContent.match(/\u0421/g) || []).length + (rawContent.match(/\u0441/g) || []).length;
-        if (rusCMatches > 0) {
-            rawContent = rawContent.replace(/\u0421/g, 'C').replace(/\u0441/g, 'c');
-            logLines.push(`Заменено русских 'С' на англ: ${rusCMatches}`);
-        }
-
-        let lines = rawContent.split(/\r?\n/);
+        let lines = await readAndNormalizeFile(filePath);
         logLines.push(`Строк изначально: ${lines.length}`);
 
         const headerIndex = lines.findIndex(line => 
-            line.includes('Designator') && line.includes('Layer') && 
-            line.includes('Center-X') && line.includes('Center-Y')
+            line.toLowerCase().includes('designator') && 
+            line.toLowerCase().includes('layer') && 
+            line.toLowerCase().includes('center-x')
         );
 
         let headerLine = '';
-        if (headerIndex > 0) {
+        let partIdx = -1;
+
+        if (headerIndex > -1) {
             logLines.push(`Маркер на строке ${headerIndex}, срезаем верх`);
             headerLine = lines[headerIndex];
+            
+            const headerCells = headerLine.replace(/"/g, '').split(',').map(c => c.trim().toLowerCase());
+            partIdx = headerCells.findIndex(c => c.includes('part number') || c.includes('comment') || c.includes('partnumber') || c.includes('val'));
+            
             lines = lines.slice(headerIndex);
-        } else if (headerIndex === 0) {
-            logLines.push('Маркер в начале файла');
-            headerLine = lines[0];
         } else {
             logLines.push('Маркер не найден, берем файл целиком');
-            headerLine = lines[0] || '';
+            headerLine = lines || '';
         }
+
 
         let ncLines = [];
 
@@ -146,6 +305,14 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
             }
 
             let cells = currentLine.split(',').map(cell => cell.trim());
+
+            if (idx > 0 && partIdx > -1 && cells[partIdx] && options.mergeMap) {
+                const rawPN = cells[partIdx].replace(/"/g, '');
+                if (options.mergeMap[rawPN]) {
+                    cells[partIdx] = cells[partIdx].startsWith('"') ? `"${options.mergeMap[rawPN]}"` : options.mergeMap[rawPN];
+                }
+            }
+
             while (cells.length > 0 && cells[cells.length - 1] === "") {
                 cells.pop();
             }
@@ -230,19 +397,22 @@ ipcMain.handle('process-csv', async (event, { filePath, options }) => {
         }
 
         logLines.push('=== Успешно завершено ===');
-        currentSessionLogs = logLines; // Сохраняем логи в RAM
+        currentSessionLogs = logLines;
 
         return { success: true, outputPath: finalPath, ncOutputPath, rowCount };
 
     } catch (error) {
         logLines.push(`!!! ОШИБКА !!!: ${error.message}`);
         console.error('Ошибка:', error);
-        currentSessionLogs = logLines; // Сохраняем логи ошибки в RAM
+        currentSessionLogs = logLines;
         return { success: false, error: error.message || 'Ошибка при обработке' };
     }
 });
 
-// Отдача логов напрямую из оперативной памяти
+
+
+
+
 ipcMain.handle('get-latest-logs', async () => {
     return { success: true, logs: currentSessionLogs.join('\n') };
 });
